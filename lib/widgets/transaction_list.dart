@@ -3,64 +3,64 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction.dart';
 import '../providers/transaction_provider.dart';
+import '../screens/edit_transaction_screen.dart';
 import '../utils/category_manager.dart';
 import '../utils/currency_manager.dart';
 
 /// Widget that displays a list of transactions
 /// Groups transactions by date and shows them in a scrollable list
 class TransactionList extends StatelessWidget {
-  const TransactionList({super.key});
+  final List<Transaction> transactions;
+  
+  const TransactionList({
+    super.key,
+    required this.transactions,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TransactionProvider>(
-      builder: (context, provider, child) {
-        if (provider.transactions.isEmpty) {
-          return const SizedBox.shrink();
-        }
+    if (transactions.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-        // Group transactions by date
-        final groupedTransactions = _groupTransactionsByDate(
-          provider.transactions,
-        );
+    // Group transactions by date
+    final groupedTransactions = _groupTransactionsByDate(transactions);
 
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: groupedTransactions.length,
-          itemBuilder: (context, index) {
-            final dateKey = groupedTransactions.keys.elementAt(index);
-            final transactions = groupedTransactions[dateKey]!;
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: groupedTransactions.length,
+      itemBuilder: (context, index) {
+        final dateKey = groupedTransactions.keys.elementAt(index);
+        final dateTransactions = groupedTransactions[dateKey]!;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date Header
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 4,
-                    top: 16,
-                    bottom: 8,
-                  ),
-                  child: Text(
-                    _formatDateHeader(dateKey),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                    ),
-                  ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date Header
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 4,
+                top: 16,
+                bottom: 8,
+              ),
+              child: Text(
+                _formatDateHeader(dateKey),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
                 ),
-                // Transaction tiles for this date
-                ...transactions.map((transaction) {
-                  return TransactionTile(
-                    transaction: transaction,
-                    key: ValueKey(transaction.id),
-                  );
-                }).toList(),
-              ],
-            );
-          },
+              ),
+            ),
+            // Transaction tiles for this date
+            ...dateTransactions.map((transaction) {
+              return TransactionTile(
+                transaction: transaction,
+                key: ValueKey(transaction.id),
+              );
+            }).toList(),
+          ],
         );
       },
     );
@@ -118,13 +118,30 @@ class TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dismissible(
       key: Key(transaction.id),
-      direction: DismissDirection.endToStart,
-      background: _buildDismissBackground(),
+      direction: DismissDirection.horizontal,
+      background: _buildEditBackground(),
+      secondaryBackground: _buildDismissBackground(),
       confirmDismiss: (direction) async {
-        return await _showDeleteConfirmation(context);
+        if (direction == DismissDirection.endToStart) {
+          return await _showDeleteConfirmation(context);
+        } else if (direction == DismissDirection.startToEnd) {
+          // Edit action
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EditTransactionScreen(
+                transaction: transaction,
+              ),
+            ),
+          );
+          return false; // Don't dismiss
+        }
+        return false;
       },
       onDismissed: (direction) {
-        _deleteTransaction(context);
+        if (direction == DismissDirection.endToStart) {
+          _deleteTransaction(context);
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -301,6 +318,38 @@ class TransactionTile extends StatelessWidget {
           SizedBox(height: 4),
           Text(
             'Delete',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build the edit background (shown when swiping left)
+  Widget _buildEditBackground() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2196F3), // Blue
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.only(left: 20),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.edit,
+            color: Colors.white,
+            size: 32,
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Edit',
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
