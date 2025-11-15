@@ -1,0 +1,60 @@
+name: shopie
+description: A beautiful and intuitive Flutter budget tracking application to help you manage your finances effectively.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Local Database
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # Charts and Visualization
+  fl_chart: ^0.66.0
+  
+  # Date and Number Formatting
+  intl: ^0.18.1
+  
+  # File System Access
+  path_provider: ^2.1.1
+  
+  # Permissions
+  permission_handler: ^11.1.0
+  
+  # UI
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # Code Generation for Hive
+  build_runner: ^2.4.7
+  hive_generator: ^2.0.1
+  
+  # Linting
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  # Uncomment and add assets when needed
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
+  
+  # Uncomment and add fonts when needed
+  # fonts:
+  #   - family: Roboto
+  #     fonts:
+  #       - asset: fonts/Roboto-Regular.ttf
+  #       - asset: fonts/Roboto-Bold.ttf
+  #         weight: 700
