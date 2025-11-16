@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/transaction.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/currency_provider.dart';
 import '../widgets/transaction_list.dart';
-import '../utils/currency_manager.dart';
 import '../utils/category_manager.dart';
 import 'add_transaction_screen.dart';
 import 'summary_screen.dart';
@@ -479,12 +479,14 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            CurrencyManager.formatAmount(amount),
-            style: TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: color,
+          Consumer<CurrencyProvider>(
+            builder: (context, currencyProvider, child) => Text(
+              currencyProvider.formatAmount(amount),
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ),
         ],
@@ -521,12 +523,14 @@ class _HomeScreenContentState extends State<HomeScreenContent> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            CurrencyManager.formatAmount(amount),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
+          Consumer<CurrencyProvider>(
+            builder: (context, currencyProvider, child) => Text(
+              currencyProvider.formatAmount(amount),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ),
         ],

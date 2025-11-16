@@ -1,13 +1,34 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../models/transaction.dart';
 import '../services/hive_boxes.dart';
+import '../services/firestore_service.dart';
 
 /// Provider class for managing transaction state and operations
-/// Handles CRUD operations for transactions and syncs with Hive storage
+/// Handles CRUD operations for transactions and syncs with Hive storage and Firestore
 class TransactionProvider extends ChangeNotifier {
   // Private list to store all transactions
   List<Transaction> _transactions = [];
+  FirestoreService? _firestoreService;
+  String? _userId;
+  bool _firebaseAvailable = false;
+
+  TransactionProvider() {
+    _init();
+  }
+
+  void _init() async {
+    try {
+      await Firebase.app();
+      _firebaseAvailable = true;
+      _firestoreService = FirestoreService();
+      debugPrint('Firestore service initialized');
+    } catch (e) {
+      debugPrint('Firebase not available, using local storage only: $e');
+      _firebaseAvailable = false;
+    }
+  }
 
   // Getter for transactions (returns unmodifiable list to prevent external modifications)
   List<Transaction> get transactions => List.unmodifiable(_transactions);
@@ -36,7 +57,20 @@ class TransactionProvider extends ChangeNotifier {
   /// Calculate current balance (income - expenses)
   double get balance => totalIncome - totalExpenses;
 
-  /// Load all transactions from Hive storage
+  /// Set user ID and load their transactions
+  Future<void> setUser(String userId) async {
+    _userId = userId;
+    await loadTransactions();
+  }
+
+  /// Clear user data on logout
+  void clearUser() {
+    _userId = null;
+    _transactions = [];
+    notifyListeners();
+  }
+
+  /// Load all transactions from Hive storage and sync with Firestore
   /// Should be called when the app starts or when provider is initialized
   /// Returns true if load was successful, false otherwise
   Future<bool> loadTransactions() async {
@@ -47,11 +81,32 @@ class TransactionProvider extends ChangeNotifier {
         return false;
       }
 
-      // Get all transactions from Hive and sort by date (newest first)
+      // Load from local Hive first for fast UI
       _transactions = box.values.toList()
         ..sort((a, b) => b.date.compareTo(a.date));
-
       notifyListeners();
+
+      // If user is logged in, sync with Firestore
+      if (_userId != null && _firebaseAvailable && _firestoreService != null) {
+        try {
+          final firestoreTransactions = await _firestoreService!.getTransactions(_userId!);
+          
+          // Merge Firestore data with local (Firestore is source of truth)
+          _transactions = firestoreTransactions;
+          
+          // Update local Hive storage
+          await box.clear();
+          for (var transaction in _transactions) {
+            await box.put(transaction.id, transaction);
+          }
+          
+          notifyListeners();
+        } catch (e) {
+          debugPrint('Error syncing with Firestore: $e');
+          // Continue with local data if Firestore fails
+        }
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error loading transactions: $e');
@@ -59,7 +114,7 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  /// Add a new transaction to the list and save to Hive
+  /// Add a new transaction to the list and save to Hive and Firestore
   /// Returns true if the transaction was added successfully
   Future<bool> addTransaction(Transaction transaction) async {
     try {
@@ -77,6 +132,17 @@ class TransactionProvider extends ChangeNotifier {
       _transactions.sort((a, b) => b.date.compareTo(a.date));
 
       notifyListeners();
+
+      // Sync to Firestore if user is logged in
+      if (_userId != null && _firebaseAvailable && _firestoreService != null) {
+        try {
+          await _firestoreService!.addTransaction(_userId!, transaction);
+        } catch (e) {
+          debugPrint('Error syncing to Firestore: $e');
+          // Continue even if Firestore sync fails
+        }
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error adding transaction: $e');
@@ -111,6 +177,16 @@ class TransactionProvider extends ChangeNotifier {
       _transactions.sort((a, b) => b.date.compareTo(a.date));
 
       notifyListeners();
+
+      // Sync to Firestore if user is logged in
+      if (_userId != null && _firebaseAvailable && _firestoreService != null) {
+        try {
+          await _firestoreService!.updateTransaction(_userId!, updatedTransaction);
+        } catch (e) {
+          debugPrint('Error syncing update to Firestore: $e');
+        }
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error updating transaction: $e');
@@ -135,6 +211,16 @@ class TransactionProvider extends ChangeNotifier {
       _transactions.removeWhere((t) => t.id == transactionId);
 
       notifyListeners();
+
+      // Sync to Firestore if user is logged in
+      if (_userId != null && _firebaseAvailable && _firestoreService != null) {
+        try {
+          await _firestoreService!.deleteTransaction(_userId!, transactionId);
+        } catch (e) {
+          debugPrint('Error syncing delete to Firestore: $e');
+        }
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error deleting transaction: $e');

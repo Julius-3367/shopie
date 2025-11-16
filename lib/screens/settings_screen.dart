@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/theme_provider.dart';
-import '../utils/currency_manager.dart';
+import '../providers/auth_provider.dart';
+import '../providers/currency_provider.dart';
+import '../models/currency.dart';
 
 /// Settings screen for app configuration
 /// Allows users to change currency and other preferences
@@ -14,16 +16,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late CurrencyData _selectedCurrency;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedCurrency = CurrencyManager.getCurrentCurrency();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+    final selectedCurrency = currencyProvider.selectedCurrency;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -132,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Row(
                         children: [
                           Text(
-                            _selectedCurrency.symbol,
+                            '${selectedCurrency.flag} ${selectedCurrency.symbol}',
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -145,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _selectedCurrency.name,
+                                  selectedCurrency.name,
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -154,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${_selectedCurrency.code} • ${_selectedCurrency.country}',
+                                  selectedCurrency.code,
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.grey[600],
@@ -163,6 +159,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ],
                             ),
                           ),
+                          if (currencyProvider.isLoadingRates)
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
                         ],
                       ),
                     ),
@@ -281,6 +283,153 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: 20),
 
+            // Account Settings
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A237E).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.person_outline,
+                            color: Color(0xFF1A237E),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Text(
+                          'Account',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A237E),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // User Info
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, child) {
+                        return Column(
+                          children: [
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFF7CB342),
+                                child: Text(
+                                  authProvider.displayName.isNotEmpty
+                                      ? authProvider.displayName[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                authProvider.displayName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                authProvider.email,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                            const Divider(height: 32),
+                            
+                            // Logout Button
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Logout'),
+                                      content: const Text(
+                                          'Are you sure you want to logout?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                          ),
+                                          child: const Text('Logout'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true && context.mounted) {
+                                    try {
+                                      await authProvider.signOut();
+                                      // Navigation handled by auth state change
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(e.toString()),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.logout),
+                                label: const Text('Logout'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                  side: const BorderSide(color: Colors.red),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
             // App Info
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -318,6 +467,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Show currency picker dialog
   void _showCurrencyPicker() {
+    final currencyProvider = Provider.of<CurrencyProvider>(context, listen: false);
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -330,8 +481,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         maxChildSize: 0.9,
         expand: false,
         builder: (context, scrollController) {
-          final currencies = CurrencyManager.getAllCurrencies();
-          
           return Container(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -363,11 +512,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Expanded(
                   child: ListView.separated(
                     controller: scrollController,
-                    itemCount: currencies.length,
+                    itemCount: Currencies.all.length,
                     separatorBuilder: (context, index) => const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      final currency = currencies[index];
-                      final isSelected = currency.code == _selectedCurrency.code;
+                      final currency = Currencies.all[index];
+                      final isSelected = currency.code == currencyProvider.selectedCurrency.code;
                       
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(
@@ -391,13 +540,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              currency.symbol,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? const Color(0xFF7CB342)
-                                    : Colors.grey[600],
+                              currency.flag,
+                              style: const TextStyle(
+                                fontSize: 24,
                               ),
                             ),
                           ),
@@ -413,7 +558,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          '${currency.code} • ${currency.country}',
+                          '${currency.code} • ${currency.symbol}',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[600],
@@ -440,14 +585,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   /// Select currency and update
-  Future<void> _selectCurrency(CurrencyData currency) async {
-    final success = await CurrencyManager.setCurrentCurrency(currency.code);
+  Future<void> _selectCurrency(Currency currency) async {
+    final currencyProvider = Provider.of<CurrencyProvider>(context, listen: false);
     
-    if (success && mounted) {
-      setState(() {
-        _selectedCurrency = currency;
-      });
-      
+    await currencyProvider.setCurrency(currency);
+    
+    if (mounted) {
       Navigator.pop(context);
       
       // Refresh transactions to show new currency

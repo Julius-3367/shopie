@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/currency_provider.dart';
 import '../models/transaction.dart';
-import '../utils/currency_manager.dart';
 
 /// Screen displaying financial summaries with charts and statistics
 /// Includes pie charts, bar charts, and period filters
@@ -33,8 +33,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
         backgroundColor: const Color(0xFF1A237E), // Dark blue
         elevation: 0,
       ),
-      body: Consumer<TransactionProvider>(
-        builder: (context, provider, child) {
+      body: Consumer2<TransactionProvider, CurrencyProvider>(
+        builder: (context, provider, currencyProvider, child) {
           final transactions = _getFilteredTransactions(provider);
           final totalIncome = _calculateIncome(transactions);
           final totalExpense = _calculateExpense(transactions);
@@ -88,6 +88,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                             totalIncome,
                             const Color(0xFF7CB342), // Lime green
                             Icons.trending_up,
+                            currencyProvider,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -97,6 +98,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                             totalExpense,
                             const Color(0xFFFF6F00), // Orange
                             Icons.trending_down,
+                            currencyProvider,
                           ),
                         ),
                       ],
@@ -108,7 +110,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                   // Net Balance Card
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildNetBalanceCard(totalIncome - totalExpense),
+                    child: _buildNetBalanceCard(totalIncome - totalExpense, currencyProvider),
                   ),
 
                   const SizedBox(height: 24),
@@ -118,7 +120,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: _buildChartCard(
                       'Income vs Expense',
-                      _buildPieChart(totalIncome, totalExpense),
+                      _buildPieChart(totalIncome, totalExpense, currencyProvider),
                       height: 280,
                     ),
                   ),
@@ -131,7 +133,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: _buildChartCard(
                         'Expense by Category',
-                        _buildBarChart(categoryData),
+                        _buildBarChart(categoryData, currencyProvider),
                         height: 300,
                       ),
                     ),
@@ -145,6 +147,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                       transactions,
                       totalIncome,
                       totalExpense,
+                      currencyProvider,
                     ),
                   ),
 
@@ -213,6 +216,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     double amount,
     Color color,
     IconData icon,
+    CurrencyProvider currencyProvider,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -248,7 +252,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            CurrencyManager.formatAmount(amount),
+            currencyProvider.formatAmount(amount),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -261,7 +265,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   /// Build net balance card
-  Widget _buildNetBalanceCard(double balance) {
+  Widget _buildNetBalanceCard(double balance, CurrencyProvider currencyProvider) {
     final isPositive = balance >= 0;
     return Container(
       width: double.infinity,
@@ -309,7 +313,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${isPositive ? '+' : ''}${CurrencyManager.formatAmount(balance)}',
+            '${isPositive ? '+' : ''}${currencyProvider.formatAmount(balance)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -358,7 +362,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   /// Build pie chart for income vs expense
-  Widget _buildPieChart(double income, double expense) {
+  Widget _buildPieChart(double income, double expense, CurrencyProvider currencyProvider) {
     if (income == 0 && expense == 0) {
       return const Center(
         child: Text(
@@ -416,12 +420,14 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 'Income',
                 const Color(0xFF7CB342),
                 income,
+                currencyProvider,
               ),
               const SizedBox(height: 16),
               _buildLegendItem(
                 'Expense',
                 const Color(0xFFFF6F00),
                 expense,
+                currencyProvider,
               ),
             ],
           ),
@@ -431,7 +437,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   /// Build legend item for pie chart
-  Widget _buildLegendItem(String label, Color color, double amount) {
+  Widget _buildLegendItem(String label, Color color, double amount, CurrencyProvider currencyProvider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -460,7 +466,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
         Padding(
           padding: const EdgeInsets.only(left: 24),
           child: Text(
-            CurrencyManager.formatAmount(amount),
+            currencyProvider.formatAmount(amount),
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -473,7 +479,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   /// Build bar chart for category breakdown
-  Widget _buildBarChart(Map<String, double> categoryData) {
+  Widget _buildBarChart(Map<String, double> categoryData, CurrencyProvider currencyProvider) {
     final sortedEntries = categoryData.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -493,7 +499,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 touchTooltipData: BarTouchTooltipData(
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     return BarTooltipItem(
-                      CurrencyManager.formatAmount(rod.toY),
+                      currencyProvider.formatAmount(rod.toY),
                       const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -533,7 +539,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     reservedSize: 40,
                     getTitlesWidget: (value, meta) {
                       return Text(
-                        '${CurrencyManager.getCurrencySymbol()}${value.toInt()}',
+                        '${currencyProvider.selectedCurrency.symbol}${value.toInt()}',
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.grey[600],
@@ -591,6 +597,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     List<Transaction> transactions,
     double income,
     double expense,
+    CurrencyProvider currencyProvider,
   ) {
     final avgIncome =
         transactions.where((t) => t.isIncome).isEmpty
@@ -634,13 +641,13 @@ class _SummaryScreenState extends State<SummaryScreen> {
           const Divider(height: 24),
           _buildStatRow(
             'Average Income',
-            CurrencyManager.formatAmount(avgIncome),
+            currencyProvider.formatAmount(avgIncome),
             Icons.arrow_downward,
           ),
           const Divider(height: 24),
           _buildStatRow(
             'Average Expense',
-            CurrencyManager.formatAmount(avgExpense),
+            currencyProvider.formatAmount(avgExpense),
             Icons.arrow_upward,
           ),
           const Divider(height: 24),

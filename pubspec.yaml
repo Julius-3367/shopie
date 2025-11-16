@@ -17,6 +17,11 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  
   # Charts and Visualization
   fl_chart: ^0.66.0
   
@@ -31,6 +36,7 @@ dependencies:
   
   # UI
   cupertino_icons: ^1.0.6
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

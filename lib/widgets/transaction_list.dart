@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/currency_provider.dart';
 import '../screens/edit_transaction_screen.dart';
 import '../utils/category_manager.dart';
-import '../utils/currency_manager.dart';
 
 /// Widget that displays a list of transactions
 /// Groups transactions by date and shows them in a scrollable list
@@ -253,14 +253,16 @@ class TransactionTile extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        '${transaction.isIncome ? '+' : '-'}${CurrencyManager.formatAmount(transaction.amount)}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: transaction.isIncome
-                              ? const Color(0xFF7CB342) // Lime green
-                              : const Color(0xFFFF6F00), // Orange
+                      Consumer<CurrencyProvider>(
+                        builder: (context, currencyProvider, child) => Text(
+                          '${transaction.isIncome ? '+' : '-'}${currencyProvider.formatAmount(transaction.amount)}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: transaction.isIncome
+                                ? const Color(0xFF7CB342) // Lime green
+                                : const Color(0xFFFF6F00), // Orange
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -515,12 +517,14 @@ class TransactionTile extends StatelessWidget {
             const Divider(height: 32),
 
             // Amount
-            _buildDetailRow(
-              'Amount',
-              '${transaction.isIncome ? '+' : '-'}${CurrencyManager.formatAmount(transaction.amount)}',
-              transaction.isIncome
-                  ? const Color(0xFF7CB342)
-                  : const Color(0xFFFF6F00),
+            Consumer<CurrencyProvider>(
+              builder: (context, currencyProvider, child) => _buildDetailRow(
+                'Amount',
+                '${transaction.isIncome ? '+' : '-'}${currencyProvider.formatAmount(transaction.amount)}',
+                transaction.isIncome
+                    ? const Color(0xFF7CB342)
+                    : const Color(0xFFFF6F00),
+              ),
             ),
             const SizedBox(height: 16),
 
